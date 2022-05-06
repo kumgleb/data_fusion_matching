@@ -1,6 +1,6 @@
 # Data Fusion Contest 2022. Matching
  
-Solution of Data Fusion 2022 user matching challenge. <br>
+Solution of a  Data Fusion 2022 user matching challenge. <br>
  
 ## Approach:
 1. Create embeddings for category descriptions.
