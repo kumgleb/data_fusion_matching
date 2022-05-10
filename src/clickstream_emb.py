@@ -77,7 +77,7 @@ def create_text_embed_clck(text: str, wv_embeddings: KeyedVectors) -> Dict:
 
 
 def create_clck_embeddings_dict(
-    clickstream_cat: pd.DataFrame, wv_embeddings: KeyedVectors
+    clickstream_cat: pd.DataFrame, wv_embeddings: KeyedVectors, mode="WE", model=None
 ) -> Dict:
 
     embs = {}
@@ -86,10 +86,15 @@ def create_clck_embeddings_dict(
         clck_code = clickstream_cat.loc[idx, "cat_id"]
         discr = clickstream_cat.loc[idx, "Description"]
 
-        embs[clck_code] = create_text_embed_clck(discr, wv_embeddings)
+    
+        if MODE == "WE":
+            embs[clck_code] = create_text_embed(discr, wv_embeddings)
+        elif MODE == "ST":
+            embs[clck_code] = model.encode(discr)
 
-    with open("./embeddings/clck_cat_emb.pickle", "wb") as f:
-        pickle.dump(embs, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+    with open("./embeddings/new_clck_cat_emb_en_filtered.pickle", "wb") as f:
+        pickle.dump(embs, f, protocol=pickle.DEFAULT_PROTOCOL)
 
     return embs
 
