@@ -8,8 +8,7 @@ def get_feature_vector_vtb(df, id):
     idxs = np.array(df.columns[1:]).astype(np.int32)
     data = df[df["user_id"] == id].values[0][1:]
     fv[idxs] = data
-    fv += 1
-    fv = np.log(fv)
+    fv = np.log(fv + 1)
     return torch.tensor(fv, dtype=torch.float32)
 
 
@@ -21,8 +20,7 @@ def get_feature_vector_rtk(df, id):
     idxs = np.array(df.columns[1:]).astype(np.int32)
     data = df[df["user_id"] == id].values[0][1:]
     fv[idxs] = data
-    fv += 1
-    fv = np.log(fv)
+    fv = np.log(fv + 1)
     return torch.tensor(fv, dtype=torch.float32)
 
 

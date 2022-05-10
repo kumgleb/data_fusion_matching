@@ -3,16 +3,18 @@ from torch import nn
 
 class SModel(nn.Module):
     def __init__(
-        self, inp_dim=300, h_dim=512, emb_dim=256
+        self, vtb_inp_dim=386, rtk_inp_dim=402, h_dim=256, emb_dim=256
     ) -> None:
         super(SModel, self).__init__()
 
         self.vtb_net = nn.Sequential(
             nn.Linear(inp_dim, h_dim),
             nn.LayerNorm(h_dim),
+            nn.Droppout(0.3),
             nn.ReLU(),
             nn.Linear(h_dim, h_dim),
             nn.LayerNorm(h_dim),
+            nn.Droppout(0.3),
             nn.ReLU(),
             nn.Linear(h_dim, h_dim),
             nn.LayerNorm(h_dim),
@@ -26,9 +28,11 @@ class SModel(nn.Module):
         self.rtk_net = nn.Sequential(
             nn.Linear(inp_dim, h_dim),
             nn.LayerNorm(h_dim),
+            nn.Droppout(0.3),
             nn.ReLU(),
             nn.Linear(h_dim, h_dim),
             nn.LayerNorm(h_dim),
+            nn.Droppout(0.3),
             nn.ReLU(),
             nn.Linear(h_dim, h_dim),
             nn.LayerNorm(h_dim),
