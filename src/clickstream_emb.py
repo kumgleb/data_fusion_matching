@@ -87,9 +87,9 @@ def create_clck_embeddings_dict(
         discr = clickstream_cat.loc[idx, "Description"]
 
     
-        if MODE == "WE":
-            embs[clck_code] = create_text_embed(discr, wv_embeddings)
-        elif MODE == "ST":
+        if mode == "WE":
+            embs[clck_code] = create_text_embed_clck(discr, wv_embeddings)
+        elif mode == "ST":
             embs[clck_code] = model.encode(discr)
 
 

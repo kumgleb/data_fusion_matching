@@ -110,9 +110,9 @@ def create_mcc_embeddings_dict(
 
 
         if mode == "WE":
-            embs[clck_code] = create_text_embed(discr, wv_embeddings)
+            embs[mcc_code] = create_text_embed(discr, wv_embeddings)
         elif mode == "ST":
-            embs[clck_code] = model.encode(discr)
+            embs[mcc_code] = model.encode(discr)
 
 
     with open("./embeddings/mcc_emb_en.pickle", "wb") as f:
