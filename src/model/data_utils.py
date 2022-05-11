@@ -15,7 +15,7 @@ def get_negative_sample(match_true: pd.DataFrame, pos_sample: str) -> str:
 
 
 def get_feature_vector_vtb(df: pd.DataFrame, id: str) -> Tensor:
-    fv = np.zeros(386)
+    fv = np.zeros(385)
     idxs = np.array(df.columns[1:]).astype(np.int32)
     data = df[df["user_id"] == id].values[0][1:]
     fv[idxs] = data
