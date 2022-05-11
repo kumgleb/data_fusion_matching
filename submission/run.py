@@ -14,12 +14,13 @@ from src.utils import (
     create_transactions_embeddings,
     create_clickstream_embeddings,
     load_model,
+    load_embs,
     load_code_to_idx,
 )
 
 
 def create_vtb_embeddings_for_model(
-    transactions, model, mcc_code_to_idx, device
+    transactions, model, mcc_code_to_idx, mcc_embs, device
 ) -> Dict:
 
     bank_trans_emb = create_transactions_embeddings(transactions, mcc_code_to_idx)
@@ -27,14 +28,14 @@ def create_vtb_embeddings_for_model(
     del transactions
     gc.collect()
 
-    emb_dataset = EMBDataset(bank_trans_emb, "vtb")
+    emb_dataset = EMBDataset(bank_trans_emb, "vtb", mcc_embs, None)
     emb_dataset_loader = DataLoader(emb_dataset, 256, shuffle=False)
 
     embs = []
     emb_iter = iter(emb_dataset_loader)
     for i in range(len(emb_iter)):
         data = next(emb_iter)
-        emb_batch = model(data.to(device), mode="anchor")
+        emb_batch = model(data.to(device), mode="vtb")
         embs.append(emb_batch)
 
     embs = torch.cat(embs, dim=0)
@@ -50,27 +51,22 @@ def create_vtb_embeddings_for_model(
 
 
 def create_rtk_embeddings_for_model(
-    clickstream, model, cat_code_to_idx, device
+    clickstream, model, cat_code_to_idx, clc_embs, device
 ) -> Dict:
 
     rtk_emb = create_clickstream_embeddings(clickstream, cat_code_to_idx)
 
-    # Add unmatched case:
-    # ze = np.zeros(rtk_emb.shape[1]).tolist()
-    # ze[0] = "0"
-    # rtk_emb.loc[len(rtk_emb)] = ze
-
     del clickstream
     gc.collect()
 
-    emb_dataset = EMBDataset(rtk_emb, "rtk")
+    emb_dataset = EMBDataset(rtk_emb, "rtk", None, clc_embs)
     emb_dataset_loader = DataLoader(emb_dataset, 256, shuffle=False)
 
     embs = []
     emb_iter = iter(emb_dataset_loader)
     for i in range(len(emb_iter)):
         data = next(emb_iter)
-        emb_batch = model(data.to(device), mode="positive")
+        emb_batch = model(data.to(device), mode="rtk")
         embs.append(emb_batch)
 
     embs = torch.cat(embs, dim=0)
@@ -94,6 +90,11 @@ def get_closest(vtb_emb_val, rtk_emb, metric="euclid"):
             dist = distance.euclidean(vtb_emb_val, rtk_emb_val)
         elif metric == "cosine":
             dist = distance.cosine(vtb_emb_val, rtk_emb_val)
+
+            # Add unmatched:
+            if dist > 1.8 and np.random.rand() > 0.5:
+                rtk_emb_id = "0"
+                
         embs_dists.append((rtk_emb_id, dist))
 
     embs_dists.sort(key=lambda x: x[1], reverse=False)
@@ -107,7 +108,7 @@ def run_inference(transactions_df, vtb_emb, rtk_emb):
 
     for uid in tqdm(transactions_df["user_id"].unique()):
         vtb_emb_val = vtb_emb[uid]
-        closest = get_closest(vtb_emb_val, rtk_emb, metric="euclid")
+        closest = get_closest(vtb_emb_val, rtk_emb, metric="cosine")
         closest_ids = np.array([obj[0] for obj in closest], dtype=object)
         submission.append([uid, closest_ids])
 
@@ -136,13 +137,18 @@ def main():
     )
     print("Indexes dicts loaded.")
 
+    mcc_embs, clc_embs = load_embs(
+        "./submission/mcc_code_emb_seq.pickle",
+        "./submission/clc_code_emb_seq.pickle",
+    )
+
     vtb_emb = create_vtb_embeddings_for_model(
-        transactions_df, model, mcc_code_to_idx, device
+        transactions_df, model, mcc_code_to_idx, mcc_embs, device
     )
     print("VTB embeddings created.")
 
     rtk_emb = create_rtk_embeddings_for_model(
-        clickstream_df, model, cat_code_to_idx, device
+        clickstream_df, model, cat_code_to_idx, clc_embs, device
     )
     print("RTK embeddings created.")
 
