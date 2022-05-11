@@ -19,7 +19,7 @@ from src.utils import (
 
 
 def create_vtb_embeddings_for_model(
-    transactions, model, mcc_code_to_idx, device
+    transactions, models, mcc_code_to_idx, device
 ) -> Dict:
 
     bank_trans_emb = create_transactions_embeddings(transactions, mcc_code_to_idx)
@@ -34,7 +34,14 @@ def create_vtb_embeddings_for_model(
     emb_iter = iter(emb_dataset_loader)
     for i in range(len(emb_iter)):
         data = next(emb_iter)
-        emb_batch = model(data.to(device), mode="vtb")
+        emb_batch_ens = []
+        for model in models:
+            with torch.no_grad():
+                emb_batch = model(data.to(device), mode="vtb")
+                emb_batch_ens.append(emb_batch.unsqueeze(0))
+
+        emb_batch = torch.cat(emb_batch_ens, dim=0).mean(0)
+
         embs.append(emb_batch)
 
     embs = torch.cat(embs, dim=0)
@@ -50,7 +57,7 @@ def create_vtb_embeddings_for_model(
 
 
 def create_rtk_embeddings_for_model(
-    clickstream, model, cat_code_to_idx, device
+    clickstream, models, cat_code_to_idx, device
 ) -> Dict:
 
     rtk_emb = create_clickstream_embeddings(clickstream, cat_code_to_idx)
@@ -65,7 +72,14 @@ def create_rtk_embeddings_for_model(
     emb_iter = iter(emb_dataset_loader)
     for i in range(len(emb_iter)):
         data = next(emb_iter)
-        emb_batch = model(data.to(device), mode="rtk")
+        emb_batch_ens = []
+        for model in models:
+            with torch.no_grad():
+                emb_batch = model(data.to(device), mode="rtk")
+                emb_batch_ens.append(emb_batch.unsqueeze(0))
+
+        emb_batch = torch.cat(emb_batch_ens, dim=0).mean(0)
+        
         embs.append(emb_batch)
 
     embs = torch.cat(embs, dim=0)
@@ -127,10 +141,25 @@ def main():
     device = "cuda:0" if torch.cuda.is_available() else "cpu"
     print("Device: ", device)
 
-    model = SModel().to(device)
-    weights = "./weights/SModel_0.774_fold_1.pth"
-    model = load_model(weights, model, device)
-    print("Model loaded.")
+    model_weights = [
+        "./weights/SModel_0.774_fold_0.pth",
+        "./weights/SModel_0.774_fold_1.pth",
+        "./weights/SModel_0.780_fold_2.pth",
+        "./weights/SModel_0.780_fold_3.pth",
+        "./weights/SModel_0.780_fold_4.pth",
+    ]
+    raw_models = [
+        SModel().to(device),
+        SModel().to(device),
+        SModel().to(device),
+        SModel().to(device),
+        SModel().to(device),
+    ]
+    models = [
+        load_model(weights, m, device) for m, weights in zip(raw_models, model_weights)
+    ]
+
+    print(f" {len(models)} models loaded.")
 
     mcc_code_to_idx, cat_code_to_idx = load_code_to_idx(
         "./mcc_code_to_idx.pickle",
@@ -139,12 +168,12 @@ def main():
     print("Indexes dicts loaded.")
 
     vtb_emb = create_vtb_embeddings_for_model(
-        transactions_df, model, mcc_code_to_idx, device
+        transactions_df, models, mcc_code_to_idx, device
     )
     print("VTB embeddings created.")
 
     rtk_emb = create_rtk_embeddings_for_model(
-        clickstream_df, model, cat_code_to_idx, device
+        clickstream_df, models, cat_code_to_idx, device
     )
     print("RTK embeddings created.")
 
