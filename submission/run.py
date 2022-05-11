@@ -151,7 +151,7 @@ def main():
     submission = run_inference(transactions_df, vtb_emb, rtk_emb)
     print("Submission done.")
 
-    print(submission)
+    # print(submission)
     print(submission.shape)
 
     np.savez(output_path, submission)
