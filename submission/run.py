@@ -34,7 +34,7 @@ def create_vtb_embeddings_for_model(
     emb_iter = iter(emb_dataset_loader)
     for i in range(len(emb_iter)):
         data = next(emb_iter)
-        emb_batch = model(data.to(device), mode="anchor")
+        emb_batch = model(data.to(device), mode="vtb")
         embs.append(emb_batch)
 
     embs = torch.cat(embs, dim=0)
@@ -55,11 +55,6 @@ def create_rtk_embeddings_for_model(
 
     rtk_emb = create_clickstream_embeddings(clickstream, cat_code_to_idx)
 
-    # Add unmatched case:
-    # ze = np.zeros(rtk_emb.shape[1]).tolist()
-    # ze[0] = "0"
-    # rtk_emb.loc[len(rtk_emb)] = ze
-
     del clickstream
     gc.collect()
 
@@ -70,7 +65,7 @@ def create_rtk_embeddings_for_model(
     emb_iter = iter(emb_dataset_loader)
     for i in range(len(emb_iter)):
         data = next(emb_iter)
-        emb_batch = model(data.to(device), mode="positive")
+        emb_batch = model(data.to(device), mode="rtk")
         embs.append(emb_batch)
 
     embs = torch.cat(embs, dim=0)
@@ -88,12 +83,19 @@ def create_rtk_embeddings_for_model(
 def get_closest(vtb_emb_val, rtk_emb, metric="euclid"):
 
     embs_dists = []
+    dist_threshold = 40
 
     for rtk_emb_id, rtk_emb_val in rtk_emb.items():
         if metric == "euclid":
             dist = distance.euclidean(vtb_emb_val, rtk_emb_val)
         elif metric == "cosine":
             dist = distance.cosine(vtb_emb_val, rtk_emb_val)
+
+        # Add unmatched id:
+        if dist > dist_threshold:
+            if np.random.rand > 0.2:
+                rtk_emb_id = "0"
+
         embs_dists.append((rtk_emb_id, dist))
 
     embs_dists.sort(key=lambda x: x[1], reverse=False)
@@ -126,7 +128,7 @@ def main():
     print("Device: ", device)
 
     model = SModel().to(device)
-    weights = "./weights/SModel_0.606.pth"
+    weights = "./weights/SModel_0.774_fold_1.pth"
     model = load_model(weights, model, device)
     print("Model loaded.")
 
@@ -149,7 +151,7 @@ def main():
     submission = run_inference(transactions_df, vtb_emb, rtk_emb)
     print("Submission done.")
 
-    # print(submission)
+    print(submission)
     print(submission.shape)
 
     np.savez(output_path, submission)
