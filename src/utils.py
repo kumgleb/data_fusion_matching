@@ -6,8 +6,6 @@ from gensim.models import KeyedVectors
 from typing import Dict
 
 
-#  calc_distances, get_words_and_embs, get_top_k_words, filter_mcc_descriptipn
-
 def get_corpus(clickstream_categories, stopwords):
     corpus = set()
     for idx in clickstream_categories.index:
