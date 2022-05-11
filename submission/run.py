@@ -94,7 +94,7 @@ def get_closest(vtb_emb_val, rtk_emb, metric="euclid"):
             # Add unmatched:
             if dist > 1.8 and np.random.rand() > 0.5:
                 rtk_emb_id = "0"
-                
+
         embs_dists.append((rtk_emb_id, dist))
 
     embs_dists.sort(key=lambda x: x[1], reverse=False)
@@ -127,7 +127,7 @@ def main():
     print("Device: ", device)
 
     model = SModel().to(device)
-    weights = "./weights/SModel_0.606.pth"
+    weights = "./weights/SModel_0.997.pth"
     model = load_model(weights, model, device)
     print("Model loaded.")
 
@@ -138,8 +138,8 @@ def main():
     print("Indexes dicts loaded.")
 
     mcc_embs, clc_embs = load_embs(
-        "./submission/mcc_code_emb_seq.pickle",
-        "./submission/clc_code_emb_seq.pickle",
+        "./mcc_code_emb_seq.pickle",
+        "./clc_code_emb_seq.pickle",
     )
 
     vtb_emb = create_vtb_embeddings_for_model(
