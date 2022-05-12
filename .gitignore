@@ -5,4 +5,5 @@
 /wandb
 /weights
 /test_data
+/test_data_small
 /__pycache__
