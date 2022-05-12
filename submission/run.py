@@ -93,8 +93,7 @@ def get_closest(vtb_emb_val, rtk_emb, metric="euclid"):
 
         # Add unmatched id:
         if dist > dist_threshold:
-            if np.random.rand > 0.2:
-                rtk_emb_id = "0"
+            rtk_emb_id = 0.
 
         embs_dists.append((rtk_emb_id, dist))
 
@@ -123,6 +122,8 @@ def main():
     transactions_df = pd.read_csv(f"{data}/transactions.csv")
     clickstream_df = pd.read_csv(f"{data}/clickstream.csv")
     print("Dataframes loaded.")
+
+    transactions_df = transactions_df[transactions_df.mcc_code != -1]
 
     device = "cuda:0" if torch.cuda.is_available() else "cpu"
     print("Device: ", device)
