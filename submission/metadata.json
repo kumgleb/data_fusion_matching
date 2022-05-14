@@ -1,4 +1,4 @@
 {
-    "image": "glebkaa/odsai:latest",
+    "image": "glebkaa/odsai:new",
     "entry_point": "python3 -u run.py"
 }

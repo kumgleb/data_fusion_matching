@@ -1,25 +1,28 @@
 import torch
 import numpy as np
-import pandas as pd
 from torch.utils.data import Dataset
-from torch import Tensor
 
 
-def get_feature_vector_vtb(df: pd.DataFrame, id: str) -> Tensor:
-    fv = np.zeros(385)
+def get_feature_vector_vtb(df, id):
+    fv = np.zeros(386)
     idxs = np.array(df.columns[1:]).astype(np.int32)
     data = df[df["user_id"] == id].values[0][1:]
     fv[idxs] = data
-    fv = np.log(fv + 1)
+    fv += 1
+    fv = np.log(fv)
     return torch.tensor(fv, dtype=torch.float32)
 
 
-def get_feature_vector_rtk(df: pd.DataFrame, id: str) -> Tensor:
+def get_feature_vector_rtk(df, id):
     fv = np.zeros(402)
+    # if id == "0":
+    #     fv -= 1
+    #     return torch.tensor(fv, dtype=torch.float32)
     idxs = np.array(df.columns[1:]).astype(np.int32)
     data = df[df["user_id"] == id].values[0][1:]
     fv[idxs] = data
-    fv = np.log(fv + 1)
+    fv += 1
+    fv = np.log(fv)
     return torch.tensor(fv, dtype=torch.float32)
 
 

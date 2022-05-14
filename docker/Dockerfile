@@ -13,7 +13,7 @@ ENV FORCE_CUDA="1"
 
 ENV PATH=/usr/local/nvidia/bin:/usr/local/cuda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-RUN	pip install numpy scipy pandas tqdm 
+RUN	pip install numpy scipy pandas tqdm xgboost sklearn
 
 RUN pip install torch==1.7.0+cu110 torchvision==0.8.1+cu110 -f https://download.pytorch.org/whl/torch_stable.html
 

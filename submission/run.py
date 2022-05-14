@@ -4,6 +4,7 @@ import torch
 from torch.utils.data import DataLoader
 import numpy as np
 import pandas as pd
+import xgboost as xgb
 from tqdm import tqdm
 from scipy.spatial import distance
 from typing import Tuple, Dict
@@ -34,7 +35,7 @@ def create_vtb_embeddings_for_model(
     emb_iter = iter(emb_dataset_loader)
     for i in range(len(emb_iter)):
         data = next(emb_iter)
-        emb_batch = model(data.to(device), mode="vtb")
+        emb_batch = model(data.to(device), mode="anchor")
         embs.append(emb_batch)
 
     embs = torch.cat(embs, dim=0)
@@ -55,6 +56,11 @@ def create_rtk_embeddings_for_model(
 
     rtk_emb = create_clickstream_embeddings(clickstream, cat_code_to_idx)
 
+    # Add unmatched case:
+    # ze = np.zeros(rtk_emb.shape[1]).tolist()
+    # ze[0] = "0"
+    # rtk_emb.loc[len(rtk_emb)] = ze
+
     del clickstream
     gc.collect()
 
@@ -65,7 +71,7 @@ def create_rtk_embeddings_for_model(
     emb_iter = iter(emb_dataset_loader)
     for i in range(len(emb_iter)):
         data = next(emb_iter)
-        emb_batch = model(data.to(device), mode="rtk")
+        emb_batch = model(data.to(device), mode="positive")
         embs.append(emb_batch)
 
     embs = torch.cat(embs, dim=0)
@@ -73,42 +79,45 @@ def create_rtk_embeddings_for_model(
 
     uids = rtk_emb["user_id"].values
 
-    embs_dict = dict(zip(uids, embs))
+    # embs_dict = dict(zip(uids, embs))
 
     print("rtk embs shape: ", embs.shape)
 
-    return embs_dict
+    return (uids, embs)
 
 
-def get_closest(vtb_emb_val, rtk_emb, metric="euclid"):
+def get_distance(xgboost_model, vtb_emb, rtk_emb):
+    x = np.concatenate([vtb_emb, rtk_emb])
+    dist = xgboost_model.predict_proba(x.reshape(1, -1))[0][1]
+    return dist
 
-    embs_dists = []
-    dist_threshold = 40
 
-    for rtk_emb_id, rtk_emb_val in rtk_emb.items():
-        if metric == "euclid":
-            dist = distance.euclidean(vtb_emb_val, rtk_emb_val)
-        elif metric == "cosine":
-            dist = distance.cosine(vtb_emb_val, rtk_emb_val)
+def get_closest(vtb_emb_val, rtk_emb, xgboost_model):
 
-        # Add unmatched id:
-        if dist > dist_threshold:
-            rtk_emb_id = 0.
+    threshold = 0.05
 
-        embs_dists.append((rtk_emb_id, dist))
+    rtk_uids, rtk_embs = rtk_emb
 
-    embs_dists.sort(key=lambda x: x[1], reverse=False)
+    vtb_embs = np.ones_like(rtk_embs) * vtb_emb_val
+    X = np.concatenate([vtb_embs, rtk_embs], axis=1)
+    dist = xgboost_model.predict_proba(X)[:, 1]
+
+    rtk_uids[dist < threshold] = 0.
+
+    embs_dists = [(rtk_id, d) for rtk_id, d in zip(rtk_uids, dist)]
+
+    embs_dists.sort(key=lambda x: x[1], reverse=True)
 
     return embs_dists[:100]
 
 
-def run_inference(transactions_df, vtb_emb, rtk_emb):
+def run_inference(transactions_df, vtb_emb, rtk_emb, xgboost_model):
 
     submission = []
 
     for uid in tqdm(transactions_df["user_id"].unique()):
         vtb_emb_val = vtb_emb[uid]
-        closest = get_closest(vtb_emb_val, rtk_emb, metric="euclid")
+        closest = get_closest(vtb_emb_val, rtk_emb, xgboost_model)
         closest_ids = np.array([obj[0] for obj in closest], dtype=object)
         submission.append([uid, closest_ids])
 
@@ -123,13 +132,11 @@ def main():
     clickstream_df = pd.read_csv(f"{data}/clickstream.csv")
     print("Dataframes loaded.")
 
-    transactions_df = transactions_df[transactions_df.mcc_code != -1]
-
     device = "cuda:0" if torch.cuda.is_available() else "cpu"
     print("Device: ", device)
 
     model = SModel().to(device)
-    weights = "./weights/SModel_0.774_fold_1.pth"
+    weights = "./weights/SModel_0.606.pth"
     model = load_model(weights, model, device)
     print("Model loaded.")
 
@@ -144,12 +151,16 @@ def main():
     )
     print("VTB embeddings created.")
 
-    rtk_emb = create_rtk_embeddings_for_model(
+    rtk_embs = create_rtk_embeddings_for_model(
         clickstream_df, model, cat_code_to_idx, device
     )
     print("RTK embeddings created.")
 
-    submission = run_inference(transactions_df, vtb_emb, rtk_emb)
+    xgboost_model = xgb.XGBClassifier()
+    xgboost_model.load_model("./model_xgboost.txt")
+    print("XGBoost model loaded.")
+
+    submission = run_inference(transactions_df, vtb_emb, rtk_embs, xgboost_model)
     print("Submission done.")
 
     # print(submission)
