@@ -1,6 +1,6 @@
 # Data Fusion Contest 2022. Matching
 Solutions of Data Fusion 2022 user matching challenge. <br>
-Repository contains 3 solutions (in different branches) with 2 different approaches for user embedding generation. <br>
+Repository contains 4 solutions (in different branches) with 2 different approaches for user embedding generation. <br>
 All solutions share similar basic idea: <br>
 1. Create feature vectors for users based on transactions or clickstream data.
 2. Train siamese neural network with triplet loss.
@@ -10,7 +10,14 @@ All solutions share similar basic idea: <br>
  
 ![example](./img/dist_distr_example.png)
 Solutions mainly differ in a way of user feature vector generation.
- 
+
+## Best result:
+[Solution 4.](https://github.com/kumgleb/data_fusion_matching/tree/xgbm)
+<br>
+XGBoost classifier on top of siamese model embeddings:
+| R1 (Harm. Mean)  | MRR @100 | Precision @100 |
+| ------------- | ------------- |  ------------- |
+|0.1794725306| 0.1711484254 | 0.1886477462|
 ---
  
 ## Solution 1:
@@ -57,11 +64,26 @@ Is the same as solution 2 but the final embeddings are calculated as an average 
  
 ---
  
+## Solution 4:
+[Solution branch.](https://github.com/kumgleb/data_fusion_matching/tree/xgbm)
+<br>
+ 
+| R1 (Harm. Mean)  | MRR @100 | Precision @100 |
+| ------------- | ------------- |  ------------- |
+|0.1794725306| 0.1711484254 | 0.1886477462|
+ 
+Solution based on XGBoost classifier on top of siamese neural network embeddings.
+Matching score ranked by clasifier proba predicitons.
+Example can be found in the [notebook.](https://github.com/kumgleb/data_fusion_matching/blob/xgbm/xgbm.ipynb)
+
+---
+
 ## Analysis:
-Such approach does not lead to reliable separation of pairwise distances for positive and negative pairs:
-![](./img/output.png)
+Siamese neural network with triplet loss does not lead to reliable separation of pairwise distances for positive and negative pairs:
+![](./img/output.png) <br>
 *(Left image - euclidean distance, right image - cosine distance).*
 
-Thus ranking based on pairwise distances appears to be not effective enough. 
+Thus ranking based on pairwise distances appears to be not effective enough. <br>
+Adding second model (XGBoost for example) on top of siamese embeddings significantly improves the score.
  
 
